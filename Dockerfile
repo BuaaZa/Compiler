@@ -3,6 +3,6 @@ FROM openjdk:16-alpine
 COPY ./* /app/
 # 编译程序
 WORKDIR /app/
-RUN javac -d ./output ./pre/lexer/Lexer.java
+RUN javac -d ./output ./Lexer.java
 # 将当前目录设为 /app/output
 WORKDIR /app/output
