@@ -5,11 +5,10 @@ import java.util.Scanner;
 
 public class Parser {
     public static Token token;
-    public static String ret;
+    public static String ret="";
     public static void main(String[] args) throws IOException {
         File input = new File(args[0]),output = new File(args[1]);
         FileWriter writer = new FileWriter(output);
-        String ret = "";
         Lexer.s = new Scanner(input);
         getToken();
         if(CompUnit()){
