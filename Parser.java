@@ -69,10 +69,16 @@ public class Parser {
 
     private static boolean Stmt() {
         if(token.type == Token.RETURN){
-            ret +="\tret i32 ";
+            ret +="    ret i32 ";
             getToken();
             if(token.type == Token.NUMBER){
-                ret += Integer.valueOf(token.content) + "\n";
+                String number;
+                if(token.content.matches("0[xX].*")){
+                    number = String.valueOf(Integer.parseInt(token.content.substring(2),16));
+                }else if(token.content.matches("0.*")){
+                    number = String.valueOf(Integer.parseInt(token.content,8));
+                }else number = token.content;
+                ret += number + "\n";
                 getToken();
                 if(token.type == Token.SEMICOLON){
                     getToken();
@@ -85,6 +91,7 @@ public class Parser {
 
     private static void getToken(){
         token = Lexer.getToken();
+        System.out.println(token.type);
     }
 
 }
