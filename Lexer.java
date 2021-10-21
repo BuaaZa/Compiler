@@ -76,14 +76,14 @@ public class Lexer {
             input = "";
             ret = getToken();
         }else if(note_multiple_head_matcher.lookingAt()){
-            if(note_multiple_tail_matcher.reset(input).matches()){
-                input="";
+            if(note_multiple_tail_matcher.reset(input).lookingAt()){
+                input=note_multiple_tail_matcher.replaceFirst("");
                 return getToken();
             }
             while(s.hasNext()){
                 input = s.next();
-                if(note_multiple_tail_matcher.reset(input).matches()){
-                    input="";
+                if(note_multiple_tail_matcher.reset(input).lookingAt()){
+                    input=note_multiple_tail_matcher.replaceFirst("");
                     return getToken();
                 }
             }
