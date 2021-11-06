@@ -73,9 +73,9 @@ public class Lexer {
             input = number_matcher.replaceFirst("");
             String number = number_matcher.group();
             if(number.matches("0[xX].*")){
-                number = String.valueOf(Integer.parseInt(Parser.token.content.substring(2),16));
+                number = String.valueOf(Integer.parseInt(number.substring(2),16));
             }else if(number.matches("0.*")){
-                number = String.valueOf(Integer.parseInt(Parser.token.content,8));
+                number = String.valueOf(Integer.parseInt(number,8));
             }
             ret = new Token(Token.NUMBER,number);
         }else if(note_single_matcher.lookingAt()){
