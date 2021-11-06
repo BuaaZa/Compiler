@@ -7,7 +7,7 @@ public class Lexer {
     public static HashMap<String, Integer> trans=new HashMap<>();
     public static Pattern ident = Pattern.compile("[_a-zA-Z][_a-zA-Z0-9]*");
     public static Pattern number = Pattern.compile("(0[xX][0-9a-fA-F]+|(0[0-7]*)|[1-9][0-9]*)");
-    public static Pattern separator = Pattern.compile("==|=|;|\\(|\\)|\\{|}|\\+|-|\\*|/|<|>");
+    public static Pattern separator = Pattern.compile("==|=|;|\\(|\\)|\\{|}|\\+|-|\\*|/|<|>|%");
     public static Pattern keyword = Pattern.compile("if|else|while|break|continue|return|int|main");
     public static Pattern note_single = Pattern.compile("//.*");
     public static Pattern note_multiple_head = Pattern.compile("/\\*");
