@@ -24,8 +24,8 @@ public class Lexer {
         trans.put(")", Token.RPAR);
         trans.put("{", Token.LBRACE);
         trans.put("}", Token.RBRACE);
-        trans.put("+", Token.PLUS);
-        trans.put("-", Token.MINUS);
+        trans.put("+", Token.ADD);
+        trans.put("-", Token.SUB);
         trans.put("*", Token.MULT);
         trans.put("/", Token.DIV);
         trans.put("<", Token.LT);
@@ -38,6 +38,7 @@ public class Lexer {
         trans.put("return", Token.RETURN);
         trans.put("int", Token.INT);
         trans.put("main", Token.MAIN);
+        trans.put("%",Token.MOD);
     }
 
     public static Token getToken() {
@@ -70,12 +71,19 @@ public class Lexer {
             }
         }else if(number_matcher.lookingAt()){
             input = number_matcher.replaceFirst("");
-            ret = new Token(Token.NUMBER,number_matcher.group());
+            String number = number_matcher.group();
+            if(number.matches("0[xX].*")){
+                number = String.valueOf(Integer.parseInt(Parser.token.content.substring(2),16));
+            }else if(number.matches("0.*")){
+                number = String.valueOf(Integer.parseInt(Parser.token.content,8));
+            }
+            ret = new Token(Token.NUMBER,number);
         }else if(note_single_matcher.lookingAt()){
             s.nextLine();
             input = "";
             ret = getToken();
         }else if(note_multiple_head_matcher.lookingAt()){
+            input = note_multiple_head_matcher.replaceFirst("");
             if(note_multiple_tail_matcher.reset(input).lookingAt()){
                 input=note_multiple_tail_matcher.replaceFirst("");
                 return getToken();

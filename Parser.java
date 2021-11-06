@@ -1,97 +1,95 @@
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Scanner;
-
 public class Parser {
-    public static Token token;
-    public static String ret="";
-    public static void main(String[] args) throws IOException {
-        File input = new File(args[0]),output = new File(args[1]);
-        FileWriter writer = new FileWriter(output);
-        Lexer.s = new Scanner(input);
-        getToken();
-        if(CompUnit()){
-            writer.write(ret);
-            writer.flush();
-            writer.close();
-        }else System.exit(1);
-        Lexer.s.close();
+    public static Token token = Lexer.getToken();
+
+    public static SyntaxTree CompUnit() {
+        SyntaxTree tree = new SyntaxTree("CompUnit");
+        tree.addSubtree(FuncDef());
+        if(token.type != Token.EOF)
+            System.exit(1);
+        return tree;
     }
 
-    private static boolean CompUnit() {
-        return FuncDef() && token.type == Token.EOF;
+    private static SyntaxTree FuncDef() {
+        SyntaxTree tree = new SyntaxTree("FuncDef");
+        tree.addSubtree(FuncType());
+        tree.addSubtree(Ident());
+        tree.addSubtree(Token.LPAR);
+        tree.addSubtree(Token.RPAR);
+        tree.addSubtree(Block());
+        return tree;
     }
 
-    private static boolean FuncDef() {
-        if(FuncType() && Ident() && token.type==Token.LPAR){
-            ret +="(";
-            getToken();
-            if(token.type==Token.RPAR){
-                ret +=")";
-                getToken();
-                return Block();
-            }
+    private static SyntaxTree FuncType() {
+        SyntaxTree tree = new SyntaxTree("FuncType");
+        tree.addSubtree(Token.INT);
+        return tree;
+    }
+
+    private static SyntaxTree Ident() {
+        SyntaxTree tree = new SyntaxTree("Ident");
+        tree.addSubtree(Token.MAIN);
+        return tree;
+    }
+
+    private static SyntaxTree Block() {
+        SyntaxTree tree = new SyntaxTree("Block");
+        tree.addSubtree(Token.LBRACE);
+        tree.addSubtree(Stmt());
+        tree.addSubtree(Token.RBRACE);
+        return tree;
+    }
+
+    private static SyntaxTree Stmt() {
+        SyntaxTree tree = new SyntaxTree("Stmt");
+        tree.addSubtree(Token.RETURN);
+        tree.addSubtree(Exp());
+        tree.addSubtree(Token.SEMICOLON);
+        return tree;
+    }
+
+    private static SyntaxTree Exp() {
+        SyntaxTree tree = new SyntaxTree("Exp");
+        tree.addSubtree(AddExp());
+        return tree;
+    }
+
+    private static SyntaxTree AddExp() {
+        SyntaxTree tree = new SyntaxTree("AddExp");
+        tree.addSubtree(MulExp());
+        while(token.type == Token.ADD || token.type == Token.SUB){
+            tree.addSubtree(token.type);
+            tree.addSubtree(MulExp());
         }
-        return false;
+        return tree;
     }
 
-    private static boolean FuncType() {
-        if(token.type == Token.INT){
-            ret +="define dso_local i32 ";
-            getToken();
-            return true;
+    private static SyntaxTree MulExp() {
+        SyntaxTree tree = new SyntaxTree("MulExp");
+        tree.addSubtree(UnaryExp());
+        while(token.type == Token.MULT || token.type == Token.DIV || token.type ==Token.MOD){
+            tree.addSubtree(token.type);
+            tree.addSubtree(UnaryExp());
         }
-        return false;
+        return tree;
     }
 
-    private static boolean Ident() {
-        if(token.type == Token.MAIN){
-            ret +="@main";
-            getToken();
-            return true;
-        }
-        return false;
+    private static SyntaxTree UnaryExp() {
+        SyntaxTree tree = new SyntaxTree("UnaryExp");
+        while(token.type == Token.ADD || token.type == Token.SUB )
+            tree.addSubtree(token.type);
+        tree.addSubtree(PrimaryExp());
+        return tree;
     }
 
-    private static boolean Block() {
-        if(token.type == Token.LBRACE){
-            ret +="{\n";
-            getToken();
-            if(Stmt() && token.type == Token.RBRACE){
-                ret +="}";
-                getToken();
-                return true;
-            }
-        }
-        return false;
+    private static SyntaxTree PrimaryExp() {
+        SyntaxTree tree = new SyntaxTree("PrimaryExp");
+        if(token.type == Token.LPAR ){
+            tree.addSubtree(Token.LPAR);
+            tree.addSubtree(Exp());
+            tree.addSubtree(Token.RPAR);
+        }else tree.addSubtree(Token.NUMBER);
+        return tree;
     }
 
-    private static boolean Stmt() {
-        if(token.type == Token.RETURN){
-            ret +="    ret i32 ";
-            getToken();
-            if(token.type == Token.NUMBER){
-                String number;
-                if(token.content.matches("0[xX].*")){
-                    number = String.valueOf(Integer.parseInt(token.content.substring(2),16));
-                }else if(token.content.matches("0.*")){
-                    number = String.valueOf(Integer.parseInt(token.content,8));
-                }else number = token.content;
-                ret += number + "\n";
-                getToken();
-                if(token.type == Token.SEMICOLON){
-                    getToken();
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private static void getToken(){
-        token = Lexer.getToken();
-        System.out.println(token.type);
-    }
 
 }
