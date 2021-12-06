@@ -7,6 +7,7 @@ public class Compiler {
     public static FuncList funcList = new FuncList();
     public static VarList varList = new VarList(0,null);
     public static int blockNum = 0;
+    public static WhileRecorder currentWhile = null;
 
 
     public static void main(String[] args) throws IOException {
@@ -152,7 +153,8 @@ public class Compiler {
             res.append("    ret i32 ")
                     .append(ret)
                     .append("\n");
-        }else if(t.getSubtree(0).type == Token.IF){
+        }
+        else if(t.getSubtree(0).type == Token.IF){
             Exp cond = Cond(t.getSubtree(2));
             int elseIndex;
             res.append("    ").append("br i1 ").append(cond).append(", label ")
@@ -168,30 +170,56 @@ public class Compiler {
                 varList.regNum++;
                 Stmt(t.getSubtree(4));
                 res.append("    ")
-                        .append("br label ");
-                res.append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
-                        .append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
-                        .append(":\n");
+                        .append("br label %b").append(varList.blockNum).append("v").append(cond.regIndex+3).append("\n\n")
+                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2).append(":\n");
                 Stmt(t.getSubtree(elseIndex+1));
                 res.append("    ")
-                        .append("br label ")
-                        .append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
-                        .append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+3)
-                        .append(":\n");
-            }else {
+                        .append("br label %b").append(varList.blockNum).append("v").append(cond.regIndex+3).append("\n\n")
+                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+3).append(":\n");
+            }
+            else {
                 Stmt(t.getSubtree(4));
                 res.append("    ")
-                        .append("br label ");
-                res.append("%b").append(varList.blockNum).append("v").append(cond.regIndex+2)
-                        .append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
-                        .append(":\n");
+                        .append("br label %b").append(varList.blockNum).append("v").append(cond.regIndex+2).append("\n\n")
+                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2).append(":\n");
             }
-        }else if(t.getSubtree(0).name.equals(SyntaxTree.Block)){
+        }
+        else if(t.getSubtree(0).type == Token.WHILE){
+            currentWhile = new WhileRecorder(
+                    new Exp(varList.blockNum,varList.regNum),
+                    new Exp(varList.blockNum,varList.regNum+2),
+                    currentWhile);
+            varList.regNum += 3;
+
+            res.append("    ")
+                    .append("br label ").append(currentWhile.judgeBlock).append("\n\n")
+                    .append(currentWhile.judgeBlock.toString().substring(1)).append(":\n");
+
+            Exp cond = Cond(t.getSubtree(2));
+
+            res.append("    ").append("br i1 ").append(cond).append(", label ")
+                    .append("%b").append(varList.blockNum).append("v").append(currentWhile.judgeBlock.regIndex+1)
+                    .append(", label ").append(currentWhile.exitBlock).append("\n\n")
+                    .append("b").append(varList.blockNum).append("v").append(currentWhile.judgeBlock.regIndex+1).append(":\n");
+
+            Stmt(t.getSubtree(4));
+
+            res.append("    ")
+                    .append("br label ").append(currentWhile.judgeBlock).append("\n\n")
+                    .append(currentWhile.exitBlock.toString().substring(1)).append(":\n");
+
+            currentWhile = currentWhile.prevWhileRecorder;
+        }
+        else if(t.getSubtree(0).type == Token.BREAK){
+            res.append("    ").append("br label ").append(currentWhile.exitBlock).append("\n");
+        }
+        else if(t.getSubtree(0).type == Token.CONTINUE){
+            res.append("    ").append("br label ").append(currentWhile.judgeBlock).append("\n");
+        }
+        else if(t.getSubtree(0).name.equals(SyntaxTree.Block)){
             Block(t.getSubtree(0));
-        }else if(t.getSubtree(0).name.equals(SyntaxTree.LVal)){
+        }
+        else if(t.getSubtree(0).name.equals(SyntaxTree.LVal)){
             Variable v = searchVariable(t.getSubtree(0).getSubtree(0).content);
             if(v!=null){
                 if(!v.isConst){
@@ -200,7 +228,8 @@ public class Compiler {
                 }else System.exit(1);
             }else System.exit(1);
 
-        }else if(t.getSubtree(0).name.equals(SyntaxTree.Exp)){
+        }
+        else if(t.getSubtree(0).name.equals(SyntaxTree.Exp)){
             Exp(t.getSubtree(0));
         }
     }

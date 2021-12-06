@@ -130,7 +130,8 @@ public class Parser {
             tree.addSubtree(Token.RETURN);
             tree.addSubtree(Exp());
             tree.addSubtree(Token.SEMICOLON);
-        }else if(token.type == Token.IF){
+        }
+        else if(token.type == Token.IF){
             tree.addSubtree(Token.IF);
             tree.addSubtree(Token.LPAR);
             tree.addSubtree(Cond());
@@ -140,18 +141,35 @@ public class Parser {
                 tree.addSubtree(Token.ELSE);
                 tree.addSubtree(Stmt());
             }
-        }else if(token.type == Token.LBRACE){
+        }
+        else if(token.type == Token.WHILE){
+            tree.addSubtree(Token.WHILE);
+            tree.addSubtree(Token.LPAR);
+            tree.addSubtree(Cond());
+            tree.addSubtree(Token.RPAR);
+            tree.addSubtree(Stmt());
+        }else if(token.type == Token.BREAK){
+            tree.addSubtree(Token.BREAK);
+            tree.addSubtree(Token.SEMICOLON);
+        }else if(token.type == Token.CONTINUE){
+            tree.addSubtree(Token.CONTINUE);
+            tree.addSubtree(Token.SEMICOLON);
+        }
+        else if(token.type == Token.LBRACE){
             tree.addSubtree(Block());
-        }else if(token.type == Token.IDENT && Lexer.tokenPreview(1).type == Token.ASSIGN){
+        }
+        else if(token.type == Token.IDENT && Lexer.tokenPreview(1).type == Token.ASSIGN){
             //todo:修改判断
             tree.addSubtree(LVal());
             tree.addSubtree(Token.ASSIGN);
             tree.addSubtree(Exp());
             tree.addSubtree(Token.SEMICOLON);
-        }else if(token.type != Token.SEMICOLON){
+        }
+        else if(token.type != Token.SEMICOLON){
             tree.addSubtree(Exp());
             tree.addSubtree(Token.SEMICOLON);
-        }else{
+        }
+        else{
             tree.addSubtree(Token.SEMICOLON);
         }
         return tree;
