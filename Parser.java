@@ -148,10 +148,12 @@ public class Parser {
             tree.addSubtree(Cond());
             tree.addSubtree(Token.RPAR);
             tree.addSubtree(Stmt());
-        }else if(token.type == Token.BREAK){
+        }
+        else if(token.type == Token.BREAK){
             tree.addSubtree(Token.BREAK);
             tree.addSubtree(Token.SEMICOLON);
-        }else if(token.type == Token.CONTINUE){
+        }
+        else if(token.type == Token.CONTINUE){
             tree.addSubtree(Token.CONTINUE);
             tree.addSubtree(Token.SEMICOLON);
         }

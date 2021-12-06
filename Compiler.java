@@ -216,6 +216,8 @@ public class Compiler {
         else if(t.getSubtree(0).type == Token.CONTINUE){
             res.append("    ").append("br label ").append(currentWhile.judgeBlock).append("\n");
         }
+        else if(t.getSubtree(0).type == Token.SEMICOLON){
+        }
         else if(t.getSubtree(0).name.equals(SyntaxTree.Block)){
             Block(t.getSubtree(0));
         }
