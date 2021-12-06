@@ -3,6 +3,9 @@ public class Parser {
 
     public static SyntaxTree CompUnit() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.CompUnit);
+        while(!(token.type == Token.INT && Lexer.tokenPreview(2).type == Token.LPAR)){
+            tree.addSubtree(Decl());
+        }
         tree.addSubtree(FuncDef());
         if(token.type != Token.EOF)
             System.exit(1);
@@ -139,7 +142,7 @@ public class Parser {
             }
         }else if(token.type == Token.LBRACE){
             tree.addSubtree(Block());
-        }else if(token.type == Token.IDENT && Lexer.TokenPreview(1).type == Token.ASSIGN){
+        }else if(token.type == Token.IDENT && Lexer.tokenPreview(1).type == Token.ASSIGN){
             //todo:修改判断
             tree.addSubtree(LVal());
             tree.addSubtree(Token.ASSIGN);
@@ -236,7 +239,7 @@ public class Parser {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.UnaryExp);
         while(token.type == Token.ADD || token.type == Token.SUB || token.type == Token.NOT )
             tree.addSubtree(token.type);
-        if(token.type == Token.IDENT && Lexer.TokenPreview(1).type == Token.LPAR){
+        if(token.type == Token.IDENT && Lexer.tokenPreview(1).type == Token.LPAR){
             tree.addSubtree(Token.IDENT);
             tree.addSubtree(Token.LPAR);
             if(token.type != Token.RPAR)

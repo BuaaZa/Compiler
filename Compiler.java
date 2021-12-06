@@ -45,15 +45,24 @@ public class Compiler {
 
     private static void Compile() {
         SyntaxTree tree = Parser.CompUnit();
-        FuncDef(tree.getSubtree(0));
+        CompUnit(tree);
         System.out.println(res);
+    }
+    private static void CompUnit(SyntaxTree t) {
+        int i;
+        for (i = 0; i < t.subtree.size() && t.getSubtree(i).name.equals(SyntaxTree.Decl); i++) {
+            Decl(t.getSubtree(i));
+        }
+        FuncDef(t.getSubtree(i));
     }
 
     private static void FuncDef(SyntaxTree t) {
         res.append("define dso_local ");
         FuncType(t.getSubtree(0));
-        res.append(" @").append((t.getSubtree(1).type == Token.MAIN) ? "main" : (t.getSubtree(1).content)).append("()");
+        res.append(" @").append((t.getSubtree(1).type == Token.MAIN) ? "main" : (t.getSubtree(1).content))
+                .append("()").append("{\n");
         Block(t.getSubtree(4));
+        res.append("}\n");
     }
 
     private static void FuncType(SyntaxTree t) {
@@ -62,21 +71,18 @@ public class Compiler {
         }
     }
 
-
     private static void Block(SyntaxTree t) {
         varList = new VarList(++blockNum, varList);
-        res.append("{\n");
         for (int i = 1; i < t.subtree.size()-1 ; i++) {
             BlockItem(t.getSubtree(i));
         }
-        res.append("}");
         varList = varList.prevVarList;
     }
 
     private static void BlockItem(SyntaxTree t) {
         if(t.getSubtree(0).name.equals(SyntaxTree.Decl)){
             Decl(t.getSubtree(0));
-        }else Stmt(t.getSubtree(0),false);
+        }else Stmt(t.getSubtree(0));
     }
 
     private static void Decl(SyntaxTree t) {
@@ -97,13 +103,14 @@ public class Compiler {
         if(varList.getVariable(name)!=null)
             System.exit(1);
         Exp constInitVal = ConstInitVal(t.getSubtree(2));
-        if(!constInitVal.isConstValue)
-            System.exit(1);
         varList.putVariable(name,type,constInitVal.value);
     }
 
     private static Exp ConstInitVal(SyntaxTree t) {
-        return ConstExp(t.getSubtree(0));
+        Exp ret = ConstExp(t.getSubtree(0));
+        if(!ret.isConstValue)
+            System.exit(1);
+        return ret;
     }
 
     private static Exp ConstExp(SyntaxTree t) {
@@ -122,7 +129,14 @@ public class Compiler {
         if(varList.getVariable(name)!=null)
             System.exit(1);
         varList.putVariable(name,type);
-        if(t.subtree.size()>1){
+        if(varList.blockNum == 0){
+            if(t.subtree.size()>1){
+                Exp initVal = InitVal(t.getSubtree(2));
+                if(!initVal.isConstValue)
+                    System.exit(1);
+                res.append(initVal.value).append("\n");
+            }else res.append("0\n");
+        }else if(t.subtree.size()>1){
             Exp initVal = InitVal(t.getSubtree(2));
             varList.getVariable(name).storeVariable(initVal);
         }
@@ -132,7 +146,7 @@ public class Compiler {
         return Exp(t.getSubtree(0));
     }
 
-    private static void Stmt(SyntaxTree t,boolean isInBranchBlock) {
+    private static void Stmt(SyntaxTree t) {
         if(t.getSubtree(0).type == Token.RETURN){
             Exp ret = Exp(t.getSubtree(1));
             res.append("    ret i32 ")
@@ -141,8 +155,7 @@ public class Compiler {
         }else if(t.getSubtree(0).type == Token.IF){
             Exp cond = Cond(t.getSubtree(2));
             int elseIndex;
-            res.append("    ")
-                    .append("br i1 ").append(cond).append(", label ")
+            res.append("    ").append("br i1 ").append(cond).append(", label ")
                     .append("%b").append(varList.blockNum).append("v").append(varList.regNum++)
                     .append(", label ")
                     .append("%b").append(varList.blockNum).append("v").append(varList.regNum++)
@@ -153,14 +166,14 @@ public class Compiler {
 
             if((elseIndex = t.searchSubtree(Token.ELSE)) != -1){
                 varList.regNum++;
-                Stmt(t.getSubtree(4),true);
+                Stmt(t.getSubtree(4));
                 res.append("    ")
                         .append("br label ");
                 res.append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
                         .append("\n\n")
                         .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
                         .append(":\n");
-                Stmt(t.getSubtree(elseIndex+1),true);
+                Stmt(t.getSubtree(elseIndex+1));
                 res.append("    ")
                         .append("br label ")
                         .append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
@@ -168,7 +181,7 @@ public class Compiler {
                         .append("b").append(varList.blockNum).append("v").append(cond.regIndex+3)
                         .append(":\n");
             }else {
-                Stmt(t.getSubtree(4),true);
+                Stmt(t.getSubtree(4));
                 res.append("    ")
                         .append("br label ");
                 res.append("%b").append(varList.blockNum).append("v").append(cond.regIndex+2)
@@ -177,9 +190,7 @@ public class Compiler {
                         .append(":\n");
             }
         }else if(t.getSubtree(0).name.equals(SyntaxTree.Block)){
-            if(isInBranchBlock){
-                BranchBlock(t.getSubtree(0));
-            }else Block(t.getSubtree(0));
+            Block(t.getSubtree(0));
         }else if(t.getSubtree(0).name.equals(SyntaxTree.LVal)){
             Variable v = searchVariable(t.getSubtree(0).getSubtree(0).content);
             if(v!=null){
@@ -192,14 +203,6 @@ public class Compiler {
         }else if(t.getSubtree(0).name.equals(SyntaxTree.Exp)){
             Exp(t.getSubtree(0));
         }
-    }
-
-    private static void BranchBlock(SyntaxTree t) {
-        varList = new VarList(++blockNum, varList);
-        for (int i = 1; i < t.subtree.size()-1 ; i++) {
-            BlockItem(t.getSubtree(i));
-        }
-        varList = varList.prevVarList;
     }
 
     private static Exp Cond(SyntaxTree t) {
@@ -330,8 +333,6 @@ public class Compiler {
         return null;
     }
 
-
-
     public static Variable searchVariable(String name){
         VarList v = varList;
         Variable ret = v.getVariable(name);
@@ -349,6 +350,5 @@ public class Compiler {
             System.out.println(str);
         }
     }
-
 
 }

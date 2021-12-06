@@ -11,7 +11,7 @@ public class Variable extends Symbol{
         this.blockNum = blockNum;
         this.regIndex = regIndex;
         this.isConst = false;
-        this.isDefined = false;
+        this.isDefined = blockNum == 0;
         allocaVariable();
     }
 
@@ -23,9 +23,14 @@ public class Variable extends Symbol{
 
     public void allocaVariable(){
         StringBuilder str = Compiler.res;
-        str.append("    ")
-                .append(this)
-                .append(" = alloca i32\n");
+        if(blockNum == 0){
+            str.append(this).append(" = dso_local global i32 ");
+        }else{
+            str.append("    ")
+                    .append(this)
+                    .append(" = alloca i32\n");
+        }
+
     }
 
     public void storeVariable(Exp initVal){

@@ -17,7 +17,7 @@ public class Lexer {
     public static String input="";
     public static Scanner s;
     public static ArrayList<Token> TokenBuffer;
-    public static int BufferSize = 3;
+    public static int BufferSize = 5;
 
     static {
         TokenBuffer = new ArrayList<>();
@@ -141,7 +141,7 @@ public class Lexer {
         return ret;
     }
 
-    public static Token TokenPreview(int index){
+    public static Token tokenPreview(int index){
         return TokenBuffer.get(index-1);
     }
 }
