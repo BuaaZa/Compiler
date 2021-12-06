@@ -165,7 +165,7 @@ public class Compiler {
                         .append("br label ")
                         .append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
                         .append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
+                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+3)
                         .append(":\n");
             }else {
                 Stmt(t.getSubtree(4),true);
