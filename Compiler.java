@@ -1,6 +1,4 @@
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 
@@ -12,7 +10,11 @@ public class Compiler {
 
 
     public static void main(String[] args) throws IOException {
-        File input = new File(args[0]), output = new File(args[1]);
+        File input = new File(args[0]),testInput = new File(args[0]), output = new File(args[1]);
+        BufferedReader getTest = new BufferedReader(new FileReader(testInput));
+
+        printTest(getTest);
+
         FileWriter writer = new FileWriter(output);
         Lexer.s = new Scanner(input);
 
@@ -145,12 +147,15 @@ public class Compiler {
                     .append(", label ")
                     .append("%b").append(varList.blockNum).append("v").append(varList.regNum++)
                     .append("\n\n")
+
                     .append("b").append(varList.blockNum).append("v").append(cond.regIndex+1)
                     .append(":\n");
-            Stmt(t.getSubtree(4),true);
-            res.append("    ")
-                    .append("br label ");
+
             if((elseIndex = t.searchSubtree(Token.ELSE)) != -1){
+                varList.regNum++;
+                Stmt(t.getSubtree(4),true);
+                res.append("    ")
+                        .append("br label ");
                 res.append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
                         .append("\n\n")
                         .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
@@ -160,9 +165,12 @@ public class Compiler {
                         .append("br label ")
                         .append("%b").append(varList.blockNum).append("v").append(cond.regIndex+3)
                         .append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(varList.regNum++)
+                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
                         .append(":\n");
             }else {
+                Stmt(t.getSubtree(4),true);
+                res.append("    ")
+                        .append("br label ");
                 res.append("%b").append(varList.blockNum).append("v").append(cond.regIndex+2)
                         .append("\n\n")
                         .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2)
@@ -332,6 +340,14 @@ public class Compiler {
             ret = v.getVariable(name);
         }
         return ret;
+    }
+
+    private static void printTest(BufferedReader bufferedReader) throws IOException {
+        System.out.println("Test:\n");
+        String str;
+        while ((str = bufferedReader.readLine())!=null){
+            System.out.println(str);
+        }
     }
 
 
