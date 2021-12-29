@@ -391,7 +391,7 @@ public class Compiler {
                         }
                         if(indexList.size() == v.getArraySize()){
                             Exp arrayElementPtr = v.getArrayElementPtr(indexList);
-                            res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr);
+                            res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr).append("\n");
                         }else error();
 
                     }else if(t.getSubtree(0).subtree.size()==1){

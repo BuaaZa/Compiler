@@ -148,7 +148,7 @@ public class Variable extends Symbol{
                     .append(this)
                     .append("\n");
 
-            ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++,Symbol.TypePointer);
+            ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++);
         }else System.exit(1);
         return ret;
     }
