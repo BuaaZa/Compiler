@@ -64,8 +64,10 @@ public class Variable extends Symbol{
                 .append(getArrayAllocaInfo(arrayDimensions.size())).append("* ")
                 .append(this).append(", i32 0, ");
 
-        for (Exp exp:indexList) {
-            str.append("i32 ").append(exp);
+        for (int i = 0; i < indexList.size(); i++) {
+            str.append("i32 ").append(indexList.get(i));
+            if(i<indexList.size()-1)
+                str.append(", ");
         }
 
         str.append("\n");
