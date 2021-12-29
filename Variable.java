@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class Variable extends Symbol{
 
     public int blockNum;
@@ -6,7 +8,21 @@ public class Variable extends Symbol{
     public boolean isConst ;
     public boolean isDefined;
 
-    public Variable(String name,  int BType,int blockNum, int regIndex) {
+    public ArrayList<Integer> arrayDimensions;
+
+    public Variable(String name, int BType,int blockNum, int regIndex, ArrayList<Integer> arrayDimensions,boolean isConst) {
+        super(name, BType);
+        this.blockNum = blockNum;
+        this.regIndex = regIndex;
+        this.isConst = isConst;
+        this.isDefined = true;
+
+        this.arrayDimensions = new ArrayList<>();
+        this.arrayDimensions.addAll(arrayDimensions);
+        allocaArray();
+    }
+
+    public Variable(String name, int BType,int blockNum, int regIndex) {
         super(name, BType);
         this.blockNum = blockNum;
         this.regIndex = regIndex;
@@ -19,6 +35,80 @@ public class Variable extends Symbol{
         super(name, BType);
         this.value = value;
         this.isConst = true;
+    }
+    private void allocaArray() {
+        StringBuilder str = Compiler.res;
+        if(blockNum==0){
+            str.append(this).append(" = dso_local ").append((isConst)?"constant ":"global ");
+            StringBuilder arrayInfo= getArrayAllocaInfo(arrayDimensions.size());
+            str.append(arrayInfo).append(" ");
+        }else{
+            str.append("    ").append(this).append(" = alloca ");
+            StringBuilder arrayInfo= getArrayAllocaInfo(arrayDimensions.size());
+            str.append(arrayInfo).append("\n")
+                    .append("    store ").append(arrayInfo).append(" zeroinitializer, ")
+                    .append(arrayInfo).append("* ").append(this).append("\n");
+
+        }
+    }
+
+    public Exp getArrayElementPtr(ArrayList<Exp> indexList){
+        Exp ret = null;
+
+        StringBuilder str = Compiler.res;
+        str.append("    ")
+                .append((Compiler.varList.blockNum == 0) ? "@" : ("%b"+Compiler.varList.blockNum))
+                .append("v").append(Compiler.varList.regNum)
+                .append(" = getelementptr ")
+                .append(getArrayAllocaInfo(arrayDimensions.size())).append(", ")
+                .append(getArrayAllocaInfo(arrayDimensions.size())).append("* ")
+                .append(this).append(", i32 0, ");
+
+        for (Exp exp:indexList) {
+            str.append("i32 ").append(exp);
+        }
+
+        str.append("\n");
+
+        ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++,Symbol.TypePointer);
+        return ret;
+    }
+
+    public int getArrayDimension(int index){
+        return arrayDimensions.get(index);
+    }
+
+    public int getArraySize(){
+        return arrayDimensions.size();
+    }
+
+    public StringBuilder getArrayAllocaInfo(int dimension){
+        StringBuilder arrayInfo= new StringBuilder("i32");
+        int length = arrayDimensions.size();
+        for (int i = length-1 ; i >=length-dimension; i--) {
+            arrayInfo.insert(0,"["+arrayDimensions.get(i)+" x ");
+            arrayInfo.append("]");
+        }
+        return arrayInfo;
+    }
+
+    public Exp loadArrayElementVariable(ArrayList<Exp> indexList){
+        Exp arrayElementPtr = getArrayElementPtr(indexList);
+        //res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr);
+        Exp ret = null;
+        StringBuilder str = Compiler.res;
+        //todo：函數
+        str.append("    ")
+                .append((Compiler.varList.blockNum == 0) ? "@" : ("%b"+Compiler.varList.blockNum))
+                .append("v")
+                .append(Compiler.varList.regNum)
+                .append(" = load i32, i32* ")
+                .append(arrayElementPtr)
+                .append("\n");
+
+        ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++);
+
+        return ret;
     }
 
     public void allocaVariable(){
@@ -56,7 +146,7 @@ public class Variable extends Symbol{
                     .append(this)
                     .append("\n");
 
-            ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++);
+            ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++,Symbol.TypePointer);
         }else System.exit(1);
         return ret;
     }

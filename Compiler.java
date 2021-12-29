@@ -31,7 +31,11 @@ public class Compiler {
 
     private static void CompileInit() {
         Lexer.InitBuffer();
-        res.append("declare i32 @getint()\ndeclare void @putint(i32)\ndeclare i32 @getch()\ndeclare void @putch(i32)\n");
+        res.append("declare i32 @getint()\n" +
+                "declare void @putint(i32)\n" +
+                "declare i32 @getch()\n" +
+                "declare void @putch(i32)\n" +
+                "declare void @memset(i32*, i32, i32)\n");
 
         funcList.putFunction("getint",Symbol.TypeInt);
         funcList.putFunction("getch",Symbol.TypeInt);
@@ -42,6 +46,16 @@ public class Compiler {
         funcList.putFunction("putch",Symbol.TypeVoid);
         funcList.getFunction("putch").addArg(new Symbol(Symbol.TypeInt));
 
+        funcList.putFunction("memset",Symbol.TypeVoid);
+        funcList.getFunction("memset").addArg(new Symbol(Symbol.TypePointer));
+        funcList.getFunction("memset").addArg(new Symbol(Symbol.TypeInt));
+        funcList.getFunction("memset").addArg(new Symbol(Symbol.TypeInt));
+
+    }
+
+    private static void error(){
+        System.out.println(res);
+        System.exit(1);
     }
 
     private static void Compile() {
@@ -93,54 +107,217 @@ public class Compiler {
     }
 
     private static void ConstDecl(SyntaxTree t) {
-        int type = (t.getSubtree(1).getSubtree(0).type == Token.INT)? Symbol.TypeInt:Symbol.TypeVoid;
         for (int i = 2; i <t.subtree.size(); i+=2) {
-            ConstDef(t.getSubtree(i),type);
+            ConstDef(t.getSubtree(i));
         }
     }
 
-    private static void ConstDef(SyntaxTree t, int type) {
+    private static void ConstDef(SyntaxTree t) {
         String name = t.getSubtree(0).content;
         if(varList.getVariable(name)!=null)
-            System.exit(1);
-        Exp constInitVal = ConstInitVal(t.getSubtree(2));
-        varList.putVariable(name,type,constInitVal.value);
+            error();
+        if(t.getSubtree(1).type==Token.LBRACKET){
+            ArrayList<Integer> arrayDimensions = new ArrayList<>();
+            for (int i = 1; i < t.subtree.size()&& t.getSubtree(i).type ==Token.LBRACKET; i+=3) {
+                arrayDimensions.add(ConstExp(t.getSubtree(i + 1)).value);
+            }
+            varList.putVariable(name,Symbol.TypePointer,arrayDimensions,true);
+
+            Variable array = varList.getVariable(name);
+            StringBuilder initial =new StringBuilder();
+            if(array.blockNum == 0){
+                GlobalInitArrayVal(t.getSubtree(t.subtree.size()-1),array,arrayDimensions.size(),initial,true);
+                res.append(initial).append("\n");
+            }else{
+                ArrayList<Exp> indexList=new ArrayList<>();
+                LocalInitArrayVal(t.getSubtree(t.subtree.size()-1),array,arrayDimensions.size(),initial,true,indexList);
+            }
+
+        }else{
+            Exp constInitVal = ConstInitVal(t.getSubtree(t.subtree.size()-1));
+            varList.putVariable(name,Symbol.TypeInt,constInitVal.value);
+        }
+    }
+
+    private static void LocalInitArrayVal(SyntaxTree t, Variable array, int dimension, StringBuilder initial,boolean isConst,ArrayList<Exp> indexList) {
+        if(t.getSubtree(0).type!=Token.LBRACE || t.getSubtree(t.subtree.size()-1).type!=Token.RBRACE)
+            error();
+        if(t.subtree.size() == 2) {
+            return;
+        }else if(dimension>1){
+            int length = array.getArrayDimension(array.getArraySize()-dimension);
+            for (int i = 0; i < length; i++) {
+                if(2*i+1<t.subtree.size()){
+
+                    if(isConst&&!t.getSubtree(2 * i + 1).name.equals(SyntaxTree.ConstInitVal)){
+                        res.append(initial);
+                        error();
+                    }
+                    if(!isConst&&!t.getSubtree(2 * i + 1).name.equals(SyntaxTree.InitVal)){
+                        res.append(initial);
+                        error();
+                    }
+
+                    indexList.add(new Exp(i));
+                    LocalInitArrayVal(t.getSubtree(2 * i + 1),array,dimension-1,initial,isConst,indexList);
+                    indexList.remove(indexList.size()-1);
+                }else break;
+
+            }
+        }else{
+            int length = array.getArrayDimension(array.getArraySize()-dimension);
+
+            for (int i = 0; i < length; i++) {
+                if(2*i+1<t.subtree.size()){
+
+                    if(isConst&&!t.getSubtree(2 * i + 1).getSubtree(0).name.equals(SyntaxTree.ConstExp)){
+                        res.append(initial);
+                        error();
+                    }
+                    if(!isConst&&!t.getSubtree(2 * i + 1).getSubtree(0).name.equals(SyntaxTree.Exp)){
+                        res.append(initial);
+                        error();
+                    }
+
+                    Exp exp = (isConst)?ConstExp(t.getSubtree(2 * i + 1).getSubtree(0)):Exp(t.getSubtree(2 * i + 1).getSubtree(0));
+                    indexList.add(new Exp(i));
+
+                    Exp arrayElementPtr = array.getArrayElementPtr(indexList);
+                    initial.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr);
+                    indexList.remove(indexList.size()-1);
+                }else break;
+            }
+
+        }
+    }
+
+    private static void GlobalInitArrayVal(SyntaxTree t, Variable array,int dimension,StringBuilder initial,boolean isConst) {
+
+        if(t.getSubtree(0).type!=Token.LBRACE || t.getSubtree(t.subtree.size()-1).type!=Token.RBRACE)
+            error();
+        if(t.subtree.size() == 2){
+            initial.append("zeroinitializer");
+        }else if(dimension>1){
+
+            int length = array.getArrayDimension(array.getArraySize()-dimension);
+
+            initial.append("[");
+            for (int i = 0; i < length; i++) {
+                if(2*i+1<t.subtree.size()){
+
+                    if(isConst&&!t.getSubtree(2 * i + 1).name.equals(SyntaxTree.ConstInitVal)){
+                        res.append(initial);
+                        error();
+                    }
+                    if(!isConst&&!t.getSubtree(2 * i + 1).name.equals(SyntaxTree.InitVal)){
+                        res.append(initial);
+                        error();
+                    }
+
+                    initial.append(array.getArrayAllocaInfo(dimension-1)).append(" ");
+                    GlobalInitArrayVal(t.getSubtree(2 * i + 1),array,dimension-1,initial,isConst);
+                }else{
+                    initial.append(array.getArrayAllocaInfo(dimension-1)).append(" zeroinitializer");
+                }
+                if(i<length-1)
+                    initial.append(", ");
+            }
+            initial.append("]");
+
+        }else{
+
+                int length = array.getArrayDimension(array.getArraySize()-dimension);
+
+                initial.append("[");
+                for (int i = 0; i < length; i++) {
+                    if(2*i+1<t.subtree.size()){
+                        if(isConst&&!t.getSubtree(2 * i + 1).getSubtree(0).name.equals(SyntaxTree.ConstExp)){
+                            res.append(initial);
+                            error();
+                        }
+                        if(!isConst&&!t.getSubtree(2 * i + 1).getSubtree(0).name.equals(SyntaxTree.Exp)){
+                            res.append(initial);
+                            error();
+                        }
+
+                        Exp constExp = (isConst)?ConstExp(t.getSubtree(2 * i + 1).getSubtree(0)):Exp(t.getSubtree(2 * i + 1).getSubtree(0));
+                        if(!constExp.isConstValue)
+                            error();
+
+                        initial.append(array.getArrayAllocaInfo(dimension-1)).append(" ").append(constExp.value);
+                    }else{
+                        initial.append(array.getArrayAllocaInfo(dimension-1)).append(" ").append(0);
+                    }
+                    if(i<length-1)
+                        initial.append(", ");
+                }
+                initial.append("]");
+        }
+
+
     }
 
     private static Exp ConstInitVal(SyntaxTree t) {
-        Exp ret = ConstExp(t.getSubtree(0));
-        if(!ret.isConstValue)
-            System.exit(1);
-        return ret;
+        return ConstExp(t.getSubtree(0));
     }
 
     private static Exp ConstExp(SyntaxTree t) {
-        return Exp(t.getSubtree(0));
+        Exp ret =Exp(t.getSubtree(0));
+        if(!ret.isConstValue)
+            error();
+        return ret;
     }
 
     private static void VarDecl(SyntaxTree t) {
         int type = (t.getSubtree(0).getSubtree(0).type == Token.INT)? Symbol.TypeInt:Symbol.TypeVoid;
         for (int i = 1; i <t.subtree.size(); i+=2) {
-            VarDef(t.getSubtree(i),type);
+            VarDef(t.getSubtree(i));
         }
     }
 
-    private static void VarDef(SyntaxTree t, int type) {
+    private static void VarDef(SyntaxTree t) {
         String name = t.getSubtree(0).content;
         if(varList.getVariable(name)!=null)
-            System.exit(1);
-        varList.putVariable(name,type);
-        if(varList.blockNum == 0){
-            if(t.subtree.size()>1){
+            error();
+        if(t.getSubtree(1).type==Token.LBRACKET){
+            ArrayList<Integer> arrayDimensions = new ArrayList<>();
+            for (int i = 1; i < t.subtree.size()&& t.getSubtree(i).type ==Token.LBRACKET; i+=3) {
+                arrayDimensions.add(ConstExp(t.getSubtree(i + 1)).value);
+            }
+            varList.putVariable(name,Symbol.TypePointer,arrayDimensions,false);
+
+            Variable array = varList.getVariable(name);
+            StringBuilder initial =new StringBuilder();
+            if(array.blockNum == 0){
+                if(t.getSubtree(t.subtree.size()-1).type ==Token.RBRACKET)
+                    initial.append("zeroinitializer");
+                else{
+                    GlobalInitArrayVal(t.getSubtree(t.subtree.size()-1),array,arrayDimensions.size(),initial,false);
+                }
+                res.append(initial).append("\n");
+            }else{
+                if(t.getSubtree(t.subtree.size()-1).type !=Token.RBRACKET){
+                    ArrayList<Exp> indexList=new ArrayList<>();
+                    LocalInitArrayVal(t.getSubtree(t.subtree.size()-1),array,arrayDimensions.size(),initial,false,indexList);
+                }
+
+            }
+
+        }else{
+            varList.putVariable(name,Symbol.TypeInt);
+            if(varList.blockNum == 0){
+                if(t.subtree.size()>1){
+                    Exp initVal = InitVal(t.getSubtree(2));
+                    if(!initVal.isConstValue)
+                        error();
+                    res.append(initVal.value).append("\n");
+                }else res.append("0\n");
+            }else if(t.subtree.size()>1){
                 Exp initVal = InitVal(t.getSubtree(2));
-                if(!initVal.isConstValue)
-                    System.exit(1);
-                res.append(initVal.value).append("\n");
-            }else res.append("0\n");
-        }else if(t.subtree.size()>1){
-            Exp initVal = InitVal(t.getSubtree(2));
-            varList.getVariable(name).storeVariable(initVal);
+                varList.getVariable(name).storeVariable(initVal);
+            }
         }
+
     }
 
     private static Exp InitVal(SyntaxTree t) {
@@ -217,18 +394,33 @@ public class Compiler {
             res.append("    ").append("br label ").append(currentWhile.judgeBlock).append("\n");
         }
         else if(t.getSubtree(0).type == Token.SEMICOLON){
+            return;
         }
         else if(t.getSubtree(0).name.equals(SyntaxTree.Block)){
             Block(t.getSubtree(0));
         }
         else if(t.getSubtree(0).name.equals(SyntaxTree.LVal)){
+            //todo:数组赋值
             Variable v = searchVariable(t.getSubtree(0).getSubtree(0).content);
             if(v!=null){
                 if(!v.isConst){
-                    Exp exp = Exp(t.getSubtree(2));
-                    v.storeVariable(exp);
-                }else System.exit(1);
-            }else System.exit(1);
+                    Exp exp = Exp(t.getSubtree(t.subtree.size()-2));
+                    if(v.arrayDimensions!=null){
+
+                        ArrayList<Exp> indexList=new ArrayList<>();
+                        for (int i = 2; i < t.getSubtree(0).subtree.size(); i+=3) {
+                            indexList.add(Exp(t.getSubtree(0).getSubtree(i)));
+                        }
+                        if(indexList.size() == v.getArraySize()){
+                            Exp arrayElementPtr = v.getArrayElementPtr(indexList);
+                            res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr);
+                        }else error();
+
+                    }else if(t.getSubtree(0).subtree.size()==1){
+                        v.storeVariable(exp);
+                    }else error();
+                }else error();
+            }else error();
 
         }
         else if(t.getSubtree(0).name.equals(SyntaxTree.Exp)){
@@ -322,8 +514,8 @@ public class Compiler {
                 if(func.checkArgList(argList)){
                     //TODO:函数
                     ret = func.callFunction(argList);
-                }else System.exit(1);
-            }else System.exit(1);
+                }else error();
+            }else error();
         }
 
         for (int i = 0; t.getSubtree(i).type == Token.SUB || t.getSubtree(i).type == Token.ADD ||t.getSubtree(i).type == Token.NOT ; i++) {
@@ -357,10 +549,22 @@ public class Compiler {
     private static Exp LVal(SyntaxTree t) {
         Variable v = searchVariable(t.getSubtree(0).content);
         if(v!=null){
-            if(!v.isConst){
-                return v.loadVariable();
-            }else return new Exp(v.value);
-        }else System.exit(1);
+            if(v.arrayDimensions!=null){
+                ArrayList<Exp> indexList=new ArrayList<>();
+                for (int i = 2; i < t.subtree.size(); i+=3) {
+                    indexList.add(Exp(t.getSubtree(i)));
+                }
+                //todo:函数
+                if(indexList.size() == v.getArraySize()){
+                    return v.loadArrayElementVariable(indexList);
+
+                }else error();
+            }else if(t.subtree.size()==1){
+                if(!v.isConst){
+                    return v.loadVariable();
+                }else return new Exp(v.value);
+            }else error();
+        }else error();
         return null;
     }
 

@@ -46,18 +46,26 @@ public class SyntaxTree extends Token{
     }
 
     public void addSubtree(SyntaxTree tree){
+        //System.out.println(tree.name);
         this.subtree.add(tree);
+
     }
 
     public void addSubtree(int type){
+        //System.out.println(type);
         if(Parser.token.type == type){
             if(type == Token.NUMBER || type == Token.IDENT){
                 this.subtree.add(new SyntaxTree(type,Parser.token.content));
             }else
                 this.subtree.add(new SyntaxTree(type));
             Parser.token = Lexer.getToken();
+
             //System.out.println(Parser.token.type);
         } else {
+            /*if(name!=null)
+                System.out.println(name);
+            System.out.println(type);
+            System.out.println(Parser.token.type);*/
             System.exit(1);
         }
     }

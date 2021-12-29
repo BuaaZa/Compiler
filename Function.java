@@ -18,7 +18,16 @@ public class Function extends Symbol{
     }
 
     public boolean checkArgList(ArrayList<Exp> list){
-        return (list == null && argList.isEmpty()) || (list != null && list.size() == argList.size());
+        if(list == null && argList.isEmpty())
+            return true;
+        if(list != null  && list.size() == argList.size()){
+            for (int i = 0; i < list.size(); i++) {
+                if(list.get(i).type != argList.get(i).BType)
+                    return false;
+            }
+            return true;
+        }
+        return false;
     }
 
 
@@ -34,9 +43,14 @@ public class Function extends Symbol{
                     .append(this.name)
                     .append("(");
             if(list !=null){
-                for (Exp s : list) {
-                    //TODO:函数
-                    str.append("i32 ").append(s);
+                for (int i = 0; i < list.size(); i++) {
+                    if(list.get(i).type == Symbol.TypeInt)
+                        str.append("i32 ").append(list.get(i));
+                    if(list.get(i).type== Symbol.TypePointer)
+                        str.append("i32* ").append(list.get(i));
+                    if(i<list.size()-1)
+                        str.append(", ");
+
                 }
             }
             str.append(")\n");
@@ -47,9 +61,16 @@ public class Function extends Symbol{
                     .append("call void @")
                     .append(this.name)
                     .append("(");
-            for (Exp s:list) {
-                //TODO:函数
-                str.append("i32 ").append(s);
+            if(list !=null){
+                for (int i = 0; i < list.size(); i++) {
+                    if(list.get(i).type == Symbol.TypeInt)
+                        str.append("i32 ").append(list.get(i));
+                    if(list.get(i).type== Symbol.TypePointer)
+                        str.append("i32* ").append(list.get(i));
+                    if(i<list.size()-1)
+                        str.append(", ");
+
+                }
             }
             str.append(")\n");
 

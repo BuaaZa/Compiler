@@ -1,5 +1,5 @@
 public class Symbol {
-    public static final int TypeVoid = 0, TypeInt =  1;
+    public static final int TypeVoid = 0, TypeInt =  1,TypePointer = 2;
 
     public String name;
     public int BType;

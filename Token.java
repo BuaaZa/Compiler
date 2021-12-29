@@ -87,6 +87,14 @@ public class Token {
      * LE :  >=
      */
     public static final int LE=22;
+    /**
+     * LBRACKET :  [
+     */
+    public static final int LBRACKET = 23;
+    /**
+     * RBRACKET :  ]
+     */
+    public static final int RBRACKET = 24;
 
     public static final int IF=50,ELSE=51,WHILE=52,BREAK=53,CONTINUE=54,RETURN=55,INT=56,MAIN=57,CONST=58;
     public int type;

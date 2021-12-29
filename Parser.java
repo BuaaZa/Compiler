@@ -73,6 +73,11 @@ public class Parser {
     private static SyntaxTree ConstDef() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.ConstDef);
         tree.addSubtree(Token.IDENT);
+        while(token.type == Token.LBRACKET){
+            tree.addSubtree(Token.LBRACKET);
+            tree.addSubtree(ConstExp());
+            tree.addSubtree(Token.RBRACKET);
+        }
         tree.addSubtree(Token.ASSIGN);
         tree.addSubtree(ConstInitVal());
         return tree;
@@ -80,7 +85,17 @@ public class Parser {
 
     private static SyntaxTree ConstInitVal() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.ConstInitVal);
-        tree.addSubtree(ConstExp());
+        if(token.type == Token.LBRACE){
+            tree.addSubtree(Token.LBRACE);
+            if(token.type != Token.RBRACE){
+                tree.addSubtree(ConstInitVal());
+                while(token.type == Token.COMMA){
+                    tree.addSubtree(Token.COMMA);
+                    tree.addSubtree(ConstInitVal());
+                }
+            }
+            tree.addSubtree(Token.RBRACE);
+        }else tree.addSubtree(ConstExp());
         return tree;
     }
 
@@ -111,6 +126,11 @@ public class Parser {
     private static SyntaxTree VarDef() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.VarDef);
         tree.addSubtree(Token.IDENT);
+        while(token.type == Token.LBRACKET){
+            tree.addSubtree(Token.LBRACKET);
+            tree.addSubtree(ConstExp());
+            tree.addSubtree(Token.RBRACKET);
+        }
         if(token.type == Token.ASSIGN){
             tree.addSubtree(Token.ASSIGN);
             tree.addSubtree(InitVal());
@@ -120,7 +140,17 @@ public class Parser {
 
     private static SyntaxTree InitVal() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.InitVal);
-        tree.addSubtree(Exp());
+        if(token.type == Token.LBRACE){
+            tree.addSubtree(Token.LBRACE);
+            if(token.type != Token.RBRACE){
+                tree.addSubtree(InitVal());
+                while(token.type == Token.COMMA){
+                    tree.addSubtree(Token.COMMA);
+                    tree.addSubtree(InitVal());
+                }
+            }
+            tree.addSubtree(Token.RBRACE);
+        }else tree.addSubtree(Exp());
         return tree;
     }
 
@@ -160,12 +190,22 @@ public class Parser {
         else if(token.type == Token.LBRACE){
             tree.addSubtree(Block());
         }
-        else if(token.type == Token.IDENT && Lexer.tokenPreview(1).type == Token.ASSIGN){
+        else if(token.type == Token.IDENT){
             //todo:修改判断
-            tree.addSubtree(LVal());
-            tree.addSubtree(Token.ASSIGN);
-            tree.addSubtree(Exp());
-            tree.addSubtree(Token.SEMICOLON);
+            SyntaxTree exp = Exp();
+            if(token.type == Token.ASSIGN){
+                if(exp.getSubtree(0).subtree.size()==1 //AddExp
+                        &&exp.getSubtree(0).getSubtree(0).subtree.size()==1 //MulExp
+                        &&exp.getSubtree(0).getSubtree(0).getSubtree(0).subtree.size()==1) { //UnaryExp
+                    tree.addSubtree(exp.getSubtree(0).getSubtree(0).getSubtree(0).getSubtree(0).getSubtree(0));//LVal
+                    tree.addSubtree(Token.ASSIGN);
+                    tree.addSubtree(Exp());
+                    tree.addSubtree(Token.SEMICOLON);
+                }
+            }else{
+                tree.addSubtree(exp);
+                tree.addSubtree(Token.SEMICOLON);
+            }
         }
         else if(token.type != Token.SEMICOLON){
             tree.addSubtree(Exp());
@@ -226,6 +266,11 @@ public class Parser {
     private static SyntaxTree LVal() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.LVal);
         tree.addSubtree(Token.IDENT);
+        while(token.type == Token.LBRACKET){
+            tree.addSubtree(Token.LBRACKET);
+            tree.addSubtree(Exp());
+            tree.addSubtree(Token.RBRACKET);
+        }
         return tree;
     }
 

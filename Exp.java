@@ -11,6 +11,8 @@ public class Exp {
     public int blockNum;
     public int regIndex;
 
+    public int type;
+
     private static void ExpZext(StringBuilder str) {
         Compiler.varList.regNum++;
         str.append("    ")
@@ -138,12 +140,21 @@ public class Exp {
     public Exp(int value) {
         this.value = value;
         this.isConstValue = true;
+        this.type = Symbol.TypeInt;
     }
 
     public Exp(int blockNum,int regIndex){
         this.blockNum = blockNum;
         this.regIndex = regIndex;
         this.isConstValue = false;
+        this.type = Symbol.TypeInt;
+    }
+
+    public Exp(int blockNum,int regIndex,int type){
+        this.blockNum = blockNum;
+        this.regIndex = regIndex;
+        this.isConstValue = false;
+        this.type = Symbol.TypePointer;
     }
 
     @Override
