@@ -248,7 +248,6 @@ public class Compiler {
     }
 
     private static void VarDecl(SyntaxTree t) {
-        int type = (t.getSubtree(0).getSubtree(0).type == Token.INT)? Symbol.TypeInt:Symbol.TypeVoid;
         for (int i = 1; i <t.subtree.size(); i+=2) {
             VarDef(t.getSubtree(i));
         }
@@ -258,7 +257,7 @@ public class Compiler {
         String name = t.getSubtree(0).content;
         if(varList.getVariable(name)!=null)
             error();
-        if(t.getSubtree(1).type==Token.LBRACKET){
+        if(t.subtree.size()>1&&t.getSubtree(1).type==Token.LBRACKET){
             ArrayList<Integer> arrayDimensions = new ArrayList<>();
             for (int i = 1; i < t.subtree.size()&& t.getSubtree(i).type ==Token.LBRACKET; i+=3) {
                 arrayDimensions.add(ConstExp(t.getSubtree(i + 1)).value);
