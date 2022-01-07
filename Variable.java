@@ -142,7 +142,7 @@ public class Variable extends Symbol{
                                 .append(" = getelementptr ")
                                 .append(getArrayAllocaInfo(arrayDimensions.size())).append(", ")
                                 .append(getArrayAllocaInfo(arrayDimensions.size())).append("* ")
-                                .append(this).append(", i32 0, i32 0");
+                                .append(this).append(", i32 0, i32 0\n");
 
                         ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++,Symbol.TypePointer,tempArray);
                     }
@@ -159,7 +159,7 @@ public class Variable extends Symbol{
                             .append(" = getelementptr ")
                             .append(getArrayAllocaInfo(tempArray.size()+1)).append(", ")
                             .append(getArrayAllocaInfo(tempArray.size()+1)).append("* ")
-                            .append(exp).append(", i32 0, i32 0");
+                            .append(exp).append(", i32 0, i32 0\n");
 
                     ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++,Symbol.TypePointer,tempArray);
                 }

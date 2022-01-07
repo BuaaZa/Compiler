@@ -114,7 +114,8 @@ public class Compiler {
         Block(t.getSubtree(t.subtree.size()-1),function);
         if(type == Symbol.TypeVoid)
             res.append("    ret void\n");
-        res.append("}\n");
+        else res.append("    ret i32 0\n");
+        res.append("}\n\n");
 
         currentFunction = null;
     }
