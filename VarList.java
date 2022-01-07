@@ -43,8 +43,15 @@ public class VarList {
         variableHashMap.put(name,new Variable(name,BType,value));
     }
 
+    public void putVariable(String name,Variable variable){
+        variableHashMap.put(name,variable);
+    }
+
     public Variable getVariable(String name){
         return variableHashMap.get(name);
     }
 
+    public void setRegNum(int regNum) {
+        this.regNum = regNum;
+    }
 }

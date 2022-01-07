@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+
 public class Exp {
     public static final int Add = 1 ,Sub = 2, Mult = 3,
             Div = 4,Mod = 5,Or = 6,
@@ -12,6 +14,21 @@ public class Exp {
     public int regIndex;
 
     public int type;
+    public ArrayList<Integer> arrayDimensions;
+
+    public StringBuilder getArrayAllocaInfo(int dimension){
+        StringBuilder arrayInfo= new StringBuilder("i32");
+        int length = arrayDimensions.size();
+        for (int i = length-1 ; i >=length-dimension; i--) {
+            arrayInfo.insert(0,"["+arrayDimensions.get(i)+" x ");
+            arrayInfo.append("]");
+        }
+        return arrayInfo;
+    }
+
+    public int getArraySize(){
+        return arrayDimensions.size()+1;
+    }
 
     private static void ExpZext(StringBuilder str) {
         Compiler.varList.regNum++;
@@ -150,11 +167,13 @@ public class Exp {
         this.type = Symbol.TypeInt;
     }
 
-    public Exp(int blockNum,int regIndex,int type){
+    public Exp(int blockNum,int regIndex,int type,ArrayList<Integer> arrayDimensions){
         this.blockNum = blockNum;
         this.regIndex = regIndex;
         this.isConstValue = false;
-        this.type = Symbol.TypePointer;
+        this.type = type;
+        this.arrayDimensions = new ArrayList<>();
+        this.arrayDimensions.addAll(arrayDimensions);
     }
 
     @Override

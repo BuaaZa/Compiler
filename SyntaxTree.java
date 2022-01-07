@@ -27,7 +27,9 @@ public class SyntaxTree extends Token{
             ,LOrExp = "LOrExp"
             ,LAndExp ="LAndExp"
             ,EqExp="EqExp"
-            ,RelExp="RelExp";
+            ,RelExp="RelExp"
+            ,FuncFParams="FuncFParams"
+            ,FuncFParam="FuncFParam";
 
     public String name = null;
     public ArrayList<SyntaxTree> subtree;

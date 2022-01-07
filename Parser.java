@@ -3,12 +3,11 @@ public class Parser {
 
     public static SyntaxTree CompUnit() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.CompUnit);
-        while(!(token.type == Token.INT && Lexer.tokenPreview(2).type == Token.LPAR)){
-            tree.addSubtree(Decl());
+        while(token.type!=Token.EOF){
+            if(!((token.type == Token.INT || token.type == Token.VOID )&& Lexer.tokenPreview(2).type == Token.LPAR)){
+                tree.addSubtree(Decl());
+            }else tree.addSubtree(FuncDef());
         }
-        tree.addSubtree(FuncDef());
-        if(token.type != Token.EOF)
-            System.exit(1);
         return tree;
     }
 
@@ -19,6 +18,9 @@ public class Parser {
             tree.addSubtree(Token.MAIN);
         }else tree.addSubtree(Token.IDENT);
         tree.addSubtree(Token.LPAR);
+        if(token.type !=Token.RPAR){
+            tree.addSubtree(FuncFParams());
+        }
         tree.addSubtree(Token.RPAR);
         tree.addSubtree(Block());
         return tree;
@@ -26,7 +28,36 @@ public class Parser {
 
     private static SyntaxTree FuncType() {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.FuncType);
-        tree.addSubtree(Token.INT);
+        if(token.type == Token.INT){
+            tree.addSubtree(Token.INT);
+        }else tree.addSubtree(Token.VOID);
+
+        return tree;
+    }
+
+    private static SyntaxTree FuncFParams() {
+        SyntaxTree tree = new SyntaxTree(SyntaxTree.FuncFParams);
+        tree.addSubtree(FuncFParam());
+        while(token.type == Token.COMMA ){
+            tree.addSubtree(Token.COMMA);
+            tree.addSubtree(FuncFParam());
+        }
+        return tree;
+    }
+
+    private static SyntaxTree FuncFParam() {
+        SyntaxTree tree = new SyntaxTree(SyntaxTree.FuncFParam);
+        tree.addSubtree(BType());
+        tree.addSubtree(Token.IDENT);
+        if(token.type == Token.LBRACKET){
+            tree.addSubtree(Token.LBRACKET);
+            tree.addSubtree(Token.RBRACKET);
+            while(token.type == Token.LBRACKET){
+                tree.addSubtree(Token.LBRACKET);
+                tree.addSubtree(Exp());
+                tree.addSubtree(Token.RBRACKET);
+            }
+        }
         return tree;
     }
 
@@ -158,7 +189,9 @@ public class Parser {
         SyntaxTree tree = new SyntaxTree(SyntaxTree.Stmt);
         if(token.type==Token.RETURN){
             tree.addSubtree(Token.RETURN);
-            tree.addSubtree(Exp());
+            if(token.type!= Token.SEMICOLON){
+                tree.addSubtree(Exp());
+            }
             tree.addSubtree(Token.SEMICOLON);
         }
         else if(token.type == Token.IF){
@@ -191,7 +224,6 @@ public class Parser {
             tree.addSubtree(Block());
         }
         else if(token.type == Token.IDENT){
-            //todo:修改判断
             SyntaxTree exp = Exp();
             if(token.type == Token.ASSIGN){
                 if(exp.getSubtree(0).subtree.size()==1 //AddExp

@@ -96,7 +96,7 @@ public class Token {
      */
     public static final int RBRACKET = 24;
 
-    public static final int IF=50,ELSE=51,WHILE=52,BREAK=53,CONTINUE=54,RETURN=55,INT=56,MAIN=57,CONST=58;
+    public static final int IF=50,ELSE=51,WHILE=52,BREAK=53,CONTINUE=54,RETURN=55,INT=56,MAIN=57,CONST=58,VOID = 59;
     public int type;
     public String content;
 

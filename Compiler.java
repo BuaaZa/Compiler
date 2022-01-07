@@ -8,6 +8,8 @@ public class Compiler {
     public static VarList varList = new VarList(0,null);
     public static int blockNum = 0;
     public static WhileRecorder currentWhile = null;
+    public static Function currentFunction = null;
+    public static boolean allowArrayParam = false;
 
 
     public static void main(String[] args) throws IOException {
@@ -35,21 +37,30 @@ public class Compiler {
                 "declare void @putint(i32)\n" +
                 "declare i32 @getch()\n" +
                 "declare void @putch(i32)\n" +
-                "declare void @memset(i32*, i32, i32)\n");
+                "declare void @memset(i32*, i32, i32)\n"+
+                "declare i32 @getarray(i32*)\n"+
+                "declare void @putarray(i32, i32*)\n"+"\n");
 
         funcList.putFunction("getint",Symbol.TypeInt);
         funcList.putFunction("getch",Symbol.TypeInt);
 
         funcList.putFunction("putint",Symbol.TypeVoid);
-        funcList.getFunction("putint").addArg(new Symbol(Symbol.TypeInt));
+        funcList.getFunction("putint").addArg(new Variable(Symbol.TypeInt));
 
         funcList.putFunction("putch",Symbol.TypeVoid);
-        funcList.getFunction("putch").addArg(new Symbol(Symbol.TypeInt));
+        funcList.getFunction("putch").addArg(new Variable(Symbol.TypeInt));
 
         funcList.putFunction("memset",Symbol.TypeVoid);
-        funcList.getFunction("memset").addArg(new Symbol(Symbol.TypePointer));
-        funcList.getFunction("memset").addArg(new Symbol(Symbol.TypeInt));
-        funcList.getFunction("memset").addArg(new Symbol(Symbol.TypeInt));
+        funcList.getFunction("memset").addArg(new Variable(Symbol.TypePointer));
+        funcList.getFunction("memset").addArg(new Variable(Symbol.TypeInt));
+        funcList.getFunction("memset").addArg(new Variable(Symbol.TypeInt));
+
+        funcList.putFunction("getarray",Symbol.TypeInt);
+        funcList.getFunction("getarray").addArg(new Variable(Symbol.TypePointer,new ArrayList<Integer>()));
+
+        funcList.putFunction("putarray",Symbol.TypeVoid);
+        funcList.getFunction("putarray").addArg(new Variable(Symbol.TypeInt));
+        funcList.getFunction("putarray").addArg(new Variable(Symbol.TypePointer,new ArrayList<Integer>()));
 
     }
 
@@ -65,25 +76,114 @@ public class Compiler {
     }
     private static void CompUnit(SyntaxTree t) {
         int i;
-        for (i = 0; i < t.subtree.size() && t.getSubtree(i).name.equals(SyntaxTree.Decl); i++) {
-            Decl(t.getSubtree(i));
+        for (i = 0; i < t.subtree.size() ; i++) {
+            if(t.getSubtree(i).name.equals(SyntaxTree.Decl)){
+                Decl(t.getSubtree(i));
+            }else{
+                FuncDef(t.getSubtree(i));
+            }
         }
-        FuncDef(t.getSubtree(i));
     }
 
     private static void FuncDef(SyntaxTree t) {
         res.append("define dso_local ");
-        FuncType(t.getSubtree(0));
-        res.append(" @").append((t.getSubtree(1).type == Token.MAIN) ? "main" : (t.getSubtree(1).content))
-                .append("()").append("{\n");
-        Block(t.getSubtree(4));
+        int type = FuncType(t.getSubtree(0));
+
+        String name = (t.getSubtree(1).type == Token.MAIN) ? "main" : (t.getSubtree(1).content);
+        if(funcList.getFunction(name)!=null)
+            error();
+
+        if(name.equals("main")){
+            if(type!= Symbol.TypeInt)
+                error();
+        }
+        funcList.putFunction(name,type);
+
+        Function function = funcList.getFunction(name);
+        currentFunction = function;
+
+        res.append(" @").append(name).append("(");
+
+        if(t.getSubtree(3).name!=null && t.getSubtree(3).name.equals(SyntaxTree.FuncFParams)){
+            if(name.equals("main"))
+                error();
+            FuncFParams(t.getSubtree(3),function);
+        }
+
+        res.append(") {\n");
+        Block(t.getSubtree(t.subtree.size()-1),function);
+        if(type == Symbol.TypeVoid)
+            res.append("    ret void\n");
         res.append("}\n");
+
+        currentFunction = null;
     }
 
-    private static void FuncType(SyntaxTree t) {
+    private static void FuncFParams(SyntaxTree t,Function function) {
+        for (int i = 0; i*2 < t.subtree.size(); i++) {
+            FuncFParam(t.getSubtree(2*i),function,i);
+            if(2*i<t.subtree.size()-1)
+                res.append(", ");
+        }
+    }
+
+    private static void FuncFParam(SyntaxTree t, Function function,int index) {
+        String name = t.getSubtree(1).content;
+        if(t.subtree.size()>2){
+            ArrayList<Integer> arrayDimensions = new ArrayList<>();
+            for (int i = 5; i < t.subtree.size(); i+=3) {
+                Exp exp = Exp(t.getSubtree(i));
+                if(!exp.isConstValue)
+                    error();
+                arrayDimensions.add(exp.value);
+            }
+
+            Variable param = new Variable(name,Symbol.TypePointer,varList.blockNum+1,index,arrayDimensions,false,true);
+            function.addArg(param);
+            res.append(param.getArrayAllocaInfo(arrayDimensions.size())).append("* ").append(param);
+
+        }else{
+            Variable param =new Variable(name,Symbol.TypeInt,varList.blockNum+1,index,true);
+            function.addArg(param);
+            res.append("i32 ").append(param);
+
+        }
+    }
+
+    private static int FuncType(SyntaxTree t) {
         if (t.getSubtree(0).type == Token.INT) {
             res.append("i32");
+            return Symbol.TypeInt;
+        }else {
+            res.append("void");
+            return Symbol.TypeVoid;
         }
+    }
+
+    private static void Block(SyntaxTree t,Function function) {
+        varList = new VarList(++blockNum, varList);
+        int argSize = function.getArgSize();
+        varList.setRegNum(varList.regNum+argSize);
+        for (int i = 0; i < argSize; i++) {
+            Variable arg = function.getArg(i);
+            arg.setRegIndex(varList.regNum++);
+            arg.allocaVariable();
+            arg.storeVariable(new Exp(arg.blockNum,i));
+            if(arg.arrayDimensions!=null){
+                StringBuilder arrayAllocaInfo = arg.getArrayAllocaInfo(arg.arrayDimensions.size());
+                res.append("    ").append("%b").append(varList.blockNum)
+                        .append("v").append(varList.regNum)
+                        .append(" = load ").append(arrayAllocaInfo).append("* ")
+                        .append(", ").append(arrayAllocaInfo).append("* * ").append(arg).append("\n");
+                arg.setRegIndex(varList.regNum++);
+            }
+            varList.putVariable(arg.name,arg);
+
+        }
+        for (int i = 1; i < t.subtree.size()-1 ; i++) {
+            BlockItem(t.getSubtree(i));
+        }
+        varList = varList.prevVarList;
     }
 
     private static void Block(SyntaxTree t) {
@@ -170,7 +270,7 @@ public class Compiler {
                     Exp exp = (isConst)?ConstExp(t.getSubtree(2 * i + 1).getSubtree(0)):Exp(t.getSubtree(2 * i + 1).getSubtree(0));
                     indexList.add(new Exp(i));
 
-                    Exp arrayElementPtr = array.getArrayElementPtr(indexList);
+                    Exp arrayElementPtr = array.getArrayElementPtr(indexList,false);
                     res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr).append("\n");
                     indexList.remove(indexList.size()-1);
                 }else break;
@@ -304,10 +404,20 @@ public class Compiler {
 
     private static void Stmt(SyntaxTree t) {
         if(t.getSubtree(0).type == Token.RETURN){
-            Exp ret = Exp(t.getSubtree(1));
-            res.append("    ret i32 ")
-                    .append(ret)
-                    .append("\n");
+            if(currentFunction.BType == Symbol.TypeInt){
+                if(t.subtree.size()==2)
+                    error();
+                Exp ret = Exp(t.getSubtree(1));
+                res.append("    ret i32 ")
+                        .append(ret)
+                        .append("\n");
+            }else{
+                if(t.subtree.size()==3)
+                    error();
+                res.append("    ret void ")
+                        .append("\n");
+            }
+
         }
         else if(t.getSubtree(0).type == Token.IF){
             Exp cond = Cond(t.getSubtree(2));
@@ -378,7 +488,6 @@ public class Compiler {
             Block(t.getSubtree(0));
         }
         else if(t.getSubtree(0).name.equals(SyntaxTree.LVal)){
-            //todo:数组赋值
             Variable v = searchVariable(t.getSubtree(0).getSubtree(0).content);
             if(v!=null){
                 if(!v.isConst){
@@ -390,7 +499,7 @@ public class Compiler {
                             indexList.add(Exp(t.getSubtree(0).getSubtree(i)));
                         }
                         if(indexList.size() == v.getArraySize()){
-                            Exp arrayElementPtr = v.getArrayElementPtr(indexList);
+                            Exp arrayElementPtr = v.getArrayElementPtr(indexList,false);
                             res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr).append("\n");
                         }else error();
 
@@ -488,7 +597,9 @@ public class Compiler {
         }else{
             Function func =funcList.getFunction(t.getSubtree(t.searchSubtree(Token.IDENT)).content);
             if(func != null){
+
                 ArrayList<Exp> argList = FuncRParams(t.getSubtree(t.searchSubtree(SyntaxTree.FuncRParams)));
+
                 if(func.checkArgList(argList)){
                     //TODO:函数
                     ret = func.callFunction(argList);
@@ -509,9 +620,11 @@ public class Compiler {
     private static ArrayList<Exp> FuncRParams(SyntaxTree t) {
         if(t != null){
             ArrayList<Exp> argList = new ArrayList<>();
+            allowArrayParam = true;
             for (int i = 0; i < t.subtree.size(); i+=2) {
                 argList.add(Exp(t.getSubtree(i)));
             }
+            allowArrayParam = false;
             return argList;
         }return null;
     }
@@ -533,10 +646,18 @@ public class Compiler {
                     indexList.add(Exp(t.getSubtree(i)));
                 }
                 //todo:函数
-                if(indexList.size() == v.getArraySize()){
-                    return v.loadArrayElementVariable(indexList);
+                if(allowArrayParam){
+                    if(indexList.size() < v.getArraySize()){
+                        return v.getArrayElementPtr(indexList,true);
+                    }else if(indexList.size()== v.getArraySize()){
+                        return v.loadArrayElementVariable(indexList);
+                    }else error();
+                }else{
+                    if(indexList.size() == v.getArraySize()){
+                        return v.loadArrayElementVariable(indexList);
+                    }else error();
+                }
 
-                }else error();
             }else if(t.subtree.size()==1){
                 if(!v.isConst){
                     return v.loadVariable();
