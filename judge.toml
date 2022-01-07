@@ -1,4 +1,4 @@
-[jobs.lab8]
+[jobs.mdarray]
 # 使用 Dockerfile 来源，路径就是当前文件夹
 image = { source = "dockerfile", path = "." }
 
