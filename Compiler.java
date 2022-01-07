@@ -138,12 +138,12 @@ public class Compiler {
                 arrayDimensions.add(exp.value);
             }
 
-            Variable param = new Variable(name,Symbol.TypePointer,varList.blockNum+1,index,arrayDimensions,false,true);
+            Variable param = new Variable(name,Symbol.TypePointer,++varList.blockNum,index,arrayDimensions,false,true);
             function.addArg(param);
             res.append(param.getArrayAllocaInfo(arrayDimensions.size())).append("* ").append(param);
 
         }else{
-            Variable param =new Variable(name,Symbol.TypeInt,varList.blockNum+1,index,true);
+            Variable param =new Variable(name,Symbol.TypeInt,++varList.blockNum,index,true);
             function.addArg(param);
             res.append("i32 ").append(param);
 
