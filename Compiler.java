@@ -421,66 +421,56 @@ public class Compiler {
 
         }
         else if(t.getSubtree(0).type == Token.IF){
-            Exp cond = Cond(t.getSubtree(2));
-            int elseIndex;
-            res.append("    ").append("br i1 ").append(cond).append(", label ")
-                    .append("%b").append(varList.blockNum).append("v").append(varList.regNum++)
-                    .append(", label ")
-                    .append("%b").append(varList.blockNum).append("v").append(varList.regNum++)
-                    .append("\n\n")
+            Exp judgeBlock = new Exp(varList.blockNum,varList.regNum++);
+            Exp ifBlock = new Exp(varList.blockNum,varList.regNum++);
+            Exp elseBlock = null;
+            int elseIndex = t.searchSubtree(Token.ELSE);
+            if(elseIndex != -1)
+                elseBlock = new Exp(varList.blockNum,varList.regNum++);
+            Exp exitBlock = new Exp(varList.blockNum,varList.regNum++);
 
-                    .append("b").append(varList.blockNum).append("v").append(cond.regIndex+1)
-                    .append(":\n");
+            res.append("    br label ").append(judgeBlock).append("\n\n");
+            res.append(judgeBlock.toString().substring(1)).append(":\n");
 
-            if((elseIndex = t.searchSubtree(Token.ELSE)) != -1){
-                varList.regNum++;
-                Stmt(t.getSubtree(4));
-                res.append("    ")
-                        .append("br label %b").append(varList.blockNum).append("v").append(cond.regIndex+3).append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2).append(":\n");
+            ShortOrCond(t.getSubtree(2).getSubtree(0),ifBlock,(elseBlock!=null)?elseBlock:exitBlock);
+
+            res.append(ifBlock.toString().substring(1)).append(":\n");
+            Stmt(t.getSubtree(4));
+            res.append("    br label ").append(exitBlock).append("\n\n");
+
+            if(elseIndex != -1){
+                res.append(elseBlock.toString().substring(1)).append(":\n");
                 Stmt(t.getSubtree(elseIndex+1));
-                res.append("    ")
-                        .append("br label %b").append(varList.blockNum).append("v").append(cond.regIndex+3).append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+3).append(":\n");
+                res.append("    br label ").append(exitBlock).append("\n\n");
             }
-            else {
-                Stmt(t.getSubtree(4));
-                res.append("    ")
-                        .append("br label %b").append(varList.blockNum).append("v").append(cond.regIndex+2).append("\n\n")
-                        .append("b").append(varList.blockNum).append("v").append(cond.regIndex+2).append(":\n");
-            }
+
+            res.append(exitBlock.toString().substring(1)).append(":\n");
+
         }
         else if(t.getSubtree(0).type == Token.WHILE){
-            currentWhile = new WhileRecorder(
-                    new Exp(varList.blockNum,varList.regNum),
-                    new Exp(varList.blockNum,varList.regNum+2),
-                    currentWhile);
-            varList.regNum += 3;
+            Exp judgeBlock = new Exp(varList.blockNum,varList.regNum++);
+            Exp whileBlock = new Exp(varList.blockNum,varList.regNum++);
+            Exp exitBlock = new Exp(varList.blockNum,varList.regNum++);
+            currentWhile = new WhileRecorder(judgeBlock, exitBlock, currentWhile);
 
-            res.append("    ")
-                    .append("br label ").append(currentWhile.judgeBlock).append("\n\n")
-                    .append(currentWhile.judgeBlock.toString().substring(1)).append(":\n");
+            res.append("    br label ").append(judgeBlock).append("\n\n");
+            res.append(judgeBlock.toString().substring(1)).append(":\n");
 
-            Exp cond = Cond(t.getSubtree(2));
+            ShortOrCond(t.getSubtree(2).getSubtree(0),whileBlock,exitBlock);
 
-            res.append("    ").append("br i1 ").append(cond).append(", label ")
-                    .append("%b").append(varList.blockNum).append("v").append(currentWhile.judgeBlock.regIndex+1)
-                    .append(", label ").append(currentWhile.exitBlock).append("\n\n")
-                    .append("b").append(varList.blockNum).append("v").append(currentWhile.judgeBlock.regIndex+1).append(":\n");
-
+            res.append(whileBlock.toString().substring(1)).append(":\n");
             Stmt(t.getSubtree(4));
+            res.append("    br label ").append(judgeBlock).append("\n\n");
 
-            res.append("    ")
-                    .append("br label ").append(currentWhile.judgeBlock).append("\n\n")
-                    .append(currentWhile.exitBlock.toString().substring(1)).append(":\n");
+            res.append(exitBlock.toString().substring(1)).append(":\n");
 
             currentWhile = currentWhile.prevWhileRecorder;
         }
         else if(t.getSubtree(0).type == Token.BREAK){
-            res.append("    ").append("br label ").append(currentWhile.exitBlock).append("\n");
+            res.append("    br label ").append(currentWhile.exitBlock).append("\n");
         }
         else if(t.getSubtree(0).type == Token.CONTINUE){
-            res.append("    ").append("br label ").append(currentWhile.judgeBlock).append("\n");
+            res.append("    br label ").append(currentWhile.judgeBlock).append("\n");
         }
         else if(t.getSubtree(0).type == Token.SEMICOLON){
             return;
@@ -516,30 +506,35 @@ public class Compiler {
         }
     }
 
-    private static Exp Cond(SyntaxTree t) {
-        return LOrExp(t.getSubtree(0));
+    private static void ShortOrCond(SyntaxTree t, Exp successBlock, Exp failBlock) {
+
+        for(int i =0;i<t.subtree.size();i+=2){
+            if(i+2<t.subtree.size()){
+                Exp nextBlock = new Exp(varList.blockNum,varList.regNum++);
+                ShortAndCond(t.getSubtree(i),successBlock,nextBlock);
+                res.append(nextBlock.toString().substring(1)).append(":\n");
+            }else{
+                ShortAndCond(t.getSubtree(i),successBlock,failBlock);
+            }
+
+        }
     }
 
-    private static Exp LOrExp(SyntaxTree t) {
-        //todo :短路求值
-        Exp ret = LAndExp(t.getSubtree(0));
-        for (int i = 2; i < t.subtree.size(); i+=2) {
-            ret = Exp.ExpBoolCompute(ret,
-                    LAndExp(t.getSubtree(i)),
-                    Exp.Or);
-        }
-        return ret;
-    }
+    private static void ShortAndCond(SyntaxTree t, Exp successBlock, Exp failBlock) {
+        for (int i = 0; i < t.subtree.size(); i+=2) {
+            if(i+2<t.subtree.size()){
+                Exp nextBlock = new Exp(varList.blockNum,varList.regNum++);
+                Exp eqExp = EqExp(t.getSubtree(i));
+                res.append("    br i1 ").append(eqExp).append(", label ")
+                        .append(nextBlock).append(", label ").append(failBlock).append("\n\n");
+                res.append(nextBlock.toString().substring(1)).append(":\n");
+            }else{
+                Exp eqExp = EqExp(t.getSubtree(i));
+                res.append("    br i1 ").append(eqExp).append(", label ")
+                        .append(successBlock).append(", label ").append(failBlock).append("\n\n");
+            }
 
-    private static Exp LAndExp(SyntaxTree t) {
-        //todo :短路求值
-        Exp ret = EqExp(t.getSubtree(0));
-        for (int i = 2; i < t.subtree.size(); i+=2) {
-            ret = Exp.ExpBoolCompute(ret,
-                    EqExp(t.getSubtree(i)),
-                    Exp.And);
         }
-        return ret;
     }
 
     private static Exp EqExp(SyntaxTree t) {
@@ -602,7 +597,6 @@ public class Compiler {
                 ArrayList<Exp> argList = FuncRParams(t.getSubtree(t.searchSubtree(SyntaxTree.FuncRParams)));
 
                 if(func.checkArgList(argList)){
-                    //TODO:函数
                     ret = func.callFunction(argList);
                 }else error();
             }else error();
@@ -646,7 +640,6 @@ public class Compiler {
                 for (int i = 2; i < t.subtree.size(); i+=3) {
                     indexList.add(Exp(t.getSubtree(i)));
                 }
-                //todo:函数
                 if(allowArrayParam){
                     if(indexList.size() < v.getArraySize()){
                         return v.getArrayElementPtr(indexList,true);

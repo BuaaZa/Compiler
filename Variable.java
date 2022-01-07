@@ -192,7 +192,6 @@ public class Variable extends Symbol{
         //res.append("    store i32 ").append(exp).append(", i32* ").append(arrayElementPtr);
         Exp ret = null;
         StringBuilder str = Compiler.res;
-        //todo：函數
         str.append("    ")
                 .append((Compiler.varList.blockNum == 0) ? "@" : ("%b"+Compiler.varList.blockNum))
                 .append("v")
@@ -242,7 +241,6 @@ public class Variable extends Symbol{
     }
 
     public Exp loadVariable(){
-        //todo:函数
         Exp ret = null;
         StringBuilder str = Compiler.res;
 

@@ -108,34 +108,6 @@ public class Exp {
         return ret;
     }
 
-    public static Exp ExpBoolCompute(Exp a,Exp b,int operator){
-        //todo :短路求值
-        if(a == null || b == null){
-            System.exit(1);
-        }
-        Exp ret;
-        StringBuilder str = Compiler.res;
-
-        str.append("    ")
-                .append((Compiler.varList.blockNum == 0) ? "@" : ("%b"+Compiler.varList.blockNum))
-                .append("v")
-                .append(Compiler.varList.regNum)
-                .append(" = ");
-        switch (operator){
-            case And -> str.append("and ");
-            case Or -> str.append("or ");
-        }
-        str.append("i1 ")
-                .append(a)
-                .append(", ")
-                .append(b)
-                .append("\n");
-
-        ret = new Exp(Compiler.varList.blockNum,Compiler.varList.regNum++);
-
-        return ret;
-    }
-
     public static Exp ExpTransToBool(Exp a){
         if(a==null) System.exit(1);
         Exp ret;
