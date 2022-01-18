@@ -11,11 +11,7 @@ public class Compiler {
 
 
     public static void main(String[] args) throws IOException {
-        File input = new File(args[0]),testInput = new File(args[0]), output = new File(args[1]);
-        BufferedReader getTest = new BufferedReader(new FileReader(testInput));
-
-        printTest(getTest);
-
+        File input = new File(args[0]),output = new File(args[1]);
         FileWriter writer = new FileWriter(output);
         Lexer.s = new Scanner(input);
 
@@ -373,13 +369,5 @@ public class Compiler {
         }
         return ret;
     }
-
-    private static void printTest(BufferedReader bufferedReader) throws IOException {
-        System.out.println("Test:\n");
-        String str;
-        while ((str = bufferedReader.readLine())!=null){
-            System.out.println(str);
-        }
-    }
-
+    
 }
